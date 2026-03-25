@@ -66,7 +66,8 @@ def load_analytics_config(config_url: str):
         response = requests.get(config_url, headers=headers, timeout=10)
         response.raise_for_status()
         return response.json()
-    except Exception:
+    except Exception as e:
+        st.sidebar.error(f"Config 로드 실패: {e}")
         return {"screens": {}, "events": {}}
 
 

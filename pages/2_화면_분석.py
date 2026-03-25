@@ -31,6 +31,9 @@ table = events_table(config)
 
 # --- 화면 카테고리 매핑 (analytics_config.json에서 자동 생성) ---
 SCREEN_CATEGORY_SQL = build_screen_category_sql(config)
+if not SCREEN_CATEGORY_SQL or "WHERE FALSE" in SCREEN_CATEGORY_SQL:
+    st.warning("화면 매핑을 불러올 수 없습니다. GitHub 토큰 설정을 확인하세요.")
+    st.stop()
 
 
 @st.cache_data(ttl=3600)

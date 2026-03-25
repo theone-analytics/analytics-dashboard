@@ -15,6 +15,9 @@ EVENT_NAME_MAP = get_event_name_map(config)
 EVENT_CATEGORY_MAP = get_event_category_map(config)
 
 CUSTOM_EVENTS = list(EVENT_NAME_MAP.keys())
+if not CUSTOM_EVENTS:
+    st.warning("이벤트 매핑을 불러올 수 없습니다. GitHub 토큰 설정을 확인하세요.")
+    st.stop()
 CUSTOM_EVENTS_SQL = ", ".join(f"'{e}'" for e in CUSTOM_EVENTS)
 
 # --- 필터 ---
