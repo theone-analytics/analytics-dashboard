@@ -2,10 +2,13 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import query, events_table
+from bigquery_client import env_selector, query, events_table
 
 st.set_page_config(page_title="사용자 현황", page_icon="👥", layout="wide")
 st.title("👥 사용자 현황")
+
+# --- 환경 선택 ---
+config = env_selector()
 
 # --- 날짜 필터 ---
 col1, col2 = st.columns(2)
@@ -24,62 +27,60 @@ with col2:
 
 start_str = start_date.strftime("%Y%m%d")
 end_str = end_date.strftime("%Y%m%d")
+table = events_table(config)
 
 
 # --- 캐싱된 쿼리 함수 ---
 @st.cache_data(ttl=3600)
-def get_dau(start: str, end: str):
+def get_dau(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
         COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
-    FROM {events_table()}
+    FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
     GROUP BY date
     ORDER BY date
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 @st.cache_data(ttl=3600)
-def get_os_distribution(start: str, end: str):
+def get_os_distribution(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         device.operating_system AS os,
         COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
-    FROM {events_table()}
+    FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
     GROUP BY os
     ORDER BY users DESC
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 @st.cache_data(ttl=3600)
-def get_app_version(start: str, end: str):
+def get_app_version(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         app_info.version AS version,
         COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
-    FROM {events_table()}
+    FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
       AND app_info.version IS NOT NULL
     GROUP BY version
     ORDER BY users DESC
     LIMIT 10
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 # --- 데이터 조회 ---
-dau_df = get_dau(start_str, end_str)
-os_df = get_os_distribution(start_str, end_str)
-version_df = get_app_version(start_str, end_str)
+dau_df = get_dau(start_str, end_str, table, config)
+os_df = get_os_distribution(start_str, end_str, table, config)
+version_df = get_app_version(start_str, end_str, table, config)
 
 # --- 스코어카드 ---
-yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-week_ago_str = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
-
 yesterday_users = 0
 week_users = 0
 
@@ -91,7 +92,7 @@ if not dau_df.empty:
 
 col1, col2, col3 = st.columns(3)
 col1.metric("어제 활성 사용자", f"{yesterday_users:,}명")
-col2.metric(f"기간 내 총 활성 사용자", f"{week_users:,}명")
+col2.metric("기간 내 총 활성 사용자", f"{week_users:,}명")
 col3.metric("조회 기간", f"{(end_date - start_date).days + 1}일")
 
 st.divider()

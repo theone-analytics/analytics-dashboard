@@ -2,10 +2,13 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import query, events_table
+from bigquery_client import env_selector, query, events_table
 
 st.set_page_config(page_title="이벤트 분석", page_icon="🎯", layout="wide")
 st.title("🎯 이벤트 분석")
+
+# --- 환경 선택 ---
+config = env_selector()
 
 # --- 이벤트 매핑 ---
 EVENT_NAME_MAP = {
@@ -78,6 +81,7 @@ with col2:
 
 start_str = start_date.strftime("%Y%m%d")
 end_str = end_date.strftime("%Y%m%d")
+table = events_table(config)
 
 categories = ["전체", "운행", "장부", "지갑", "커뮤니티", "바이크", "홈", "설정"]
 with col3:
@@ -85,39 +89,39 @@ with col3:
 
 
 @st.cache_data(ttl=3600)
-def get_event_data(start: str, end: str):
+def get_event_data(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         event_name,
         COUNT(*) AS count,
         COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
-    FROM {events_table()}
+    FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
       AND event_name IN ({CUSTOM_EVENTS_SQL})
     GROUP BY event_name
     ORDER BY count DESC
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 @st.cache_data(ttl=3600)
-def get_event_daily(start: str, end: str):
+def get_event_daily(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
         COUNT(*) AS count
-    FROM {events_table()}
+    FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
       AND event_name IN ({CUSTOM_EVENTS_SQL})
     GROUP BY date
     ORDER BY date
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 # --- 데이터 조회 + 한글 매핑 ---
-event_df = get_event_data(start_str, end_str)
-daily_df = get_event_daily(start_str, end_str)
+event_df = get_event_data(start_str, end_str, table, config)
+daily_df = get_event_daily(start_str, end_str, table, config)
 
 if not event_df.empty:
     event_df["event_name_kr"] = event_df["event_name"].map(EVENT_NAME_MAP).fillna(event_df["event_name"])

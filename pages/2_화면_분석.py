@@ -2,10 +2,13 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import query, events_table
+from bigquery_client import env_selector, query, events_table
 
 st.set_page_config(page_title="화면 분석", page_icon="📱", layout="wide")
 st.title("📱 화면 분석")
+
+# --- 환경 선택 ---
+config = env_selector()
 
 # --- 필터 ---
 col1, col2, col3 = st.columns(3)
@@ -24,6 +27,7 @@ with col2:
 
 start_str = start_date.strftime("%Y%m%d")
 end_str = end_date.strftime("%Y%m%d")
+table = events_table(config)
 
 # --- 화면 카테고리 매핑 ---
 SCREEN_CATEGORY_SQL = """
@@ -102,7 +106,7 @@ SCREEN_CATEGORY_SQL = """
 
 
 @st.cache_data(ttl=3600)
-def get_screen_data(start: str, end: str, category_filter: str):
+def get_screen_data(start: str, end: str, category_filter: str, _table: str, _config: dict):
     category_condition = ""
     if category_filter != "전체":
         category_condition = f"WHERE screen_category = '{category_filter}'"
@@ -114,7 +118,7 @@ def get_screen_data(start: str, end: str, category_filter: str):
             (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'firebase_screen') AS screen_name,
             (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec') AS engagement_time_msec,
             COALESCE(user_id, user_pseudo_id) AS unique_user
-        FROM {events_table()}
+        FROM {_table}
         WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
           AND event_name = 'screen_view'
     ),
@@ -139,23 +143,23 @@ def get_screen_data(start: str, end: str, category_filter: str):
     GROUP BY screen_name, screen_category
     ORDER BY views DESC
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 @st.cache_data(ttl=3600)
-def get_screen_daily(start: str, end: str):
+def get_screen_daily(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
         COUNT(*) AS views,
         COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
-    FROM {events_table()}
+    FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
       AND event_name = 'screen_view'
     GROUP BY date
     ORDER BY date
     """
-    return query(sql)
+    return query(sql, _config)
 
 
 # --- 카테고리 필터 ---
@@ -164,8 +168,8 @@ with col3:
     category_filter = st.selectbox("카테고리", categories)
 
 # --- 데이터 조회 ---
-screen_df = get_screen_data(start_str, end_str, category_filter)
-daily_df = get_screen_daily(start_str, end_str)
+screen_df = get_screen_data(start_str, end_str, category_filter, table, config)
+daily_df = get_screen_daily(start_str, end_str, table, config)
 
 # --- 스코어카드 ---
 total_views = int(screen_df["views"].sum()) if not screen_df.empty else 0
