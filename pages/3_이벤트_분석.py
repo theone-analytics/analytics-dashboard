@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import env_selector, query, events_table
+from bigquery_client import env_selector, query, events_table, get_event_name_map, get_event_category_map
 
 st.set_page_config(page_title="이벤트 분석", page_icon="🎯", layout="wide")
 st.title("🎯 이벤트 분석")
@@ -10,56 +10,9 @@ st.title("🎯 이벤트 분석")
 # --- 환경 선택 ---
 config = env_selector()
 
-# --- 이벤트 매핑 ---
-EVENT_NAME_MAP = {
-    "drive_start": "운행 시작",
-    "drive_stop": "운행 종료",
-    "drive_break_start": "휴식 시작",
-    "drive_resume": "운행 재개",
-    "ledger_tab_switch": "장부 탭 전환",
-    "ledger_period_change": "장부 기간 변경",
-    "wallet_platform_link": "플랫폼 연동",
-    "wallet_account_register": "계좌 등록",
-    "wallet_withdraw": "출금",
-    "wallet_account_delete": "계좌 삭제",
-    "wallet_platform_unlink": "플랫폼 연동 해제",
-    "community_post_write": "게시글 작성",
-    "community_post_like": "게시글 좋아요",
-    "community_comment_write": "댓글 작성",
-    "community_comment_like": "댓글 좋아요",
-    "community_share": "공유",
-    "community_search": "커뮤니티 검색",
-    "community_follow": "구독",
-    "community_block": "차단",
-    "community_report": "신고",
-    "bike_register": "바이크 등록",
-    "bike_delete": "바이크 삭제",
-    "bike_maintenance_write": "정비 기록 작성",
-    "bike_find_repair_shop": "정비소 찾기",
-    "bike_check_insurance": "보험 확인",
-    "goal_set": "목표 설정",
-    "ad_banner_tap": "배너 클릭",
-    "notification_setting_change": "알림 설정 변경",
-    "logout": "로그아웃",
-    "account_delete": "회원 탈퇴",
-    "map_service_tab_switch": "지도 서비스 탭 전환",
-}
-
-EVENT_CATEGORY_MAP = {
-    "drive_start": "운행", "drive_stop": "운행", "drive_break_start": "운행", "drive_resume": "운행",
-    "ledger_tab_switch": "장부", "ledger_period_change": "장부",
-    "wallet_platform_link": "지갑", "wallet_account_register": "지갑", "wallet_withdraw": "지갑",
-    "wallet_account_delete": "지갑", "wallet_platform_unlink": "지갑",
-    "community_post_write": "커뮤니티", "community_post_like": "커뮤니티",
-    "community_comment_write": "커뮤니티", "community_comment_like": "커뮤니티",
-    "community_share": "커뮤니티", "community_search": "커뮤니티",
-    "community_follow": "커뮤니티", "community_block": "커뮤니티", "community_report": "커뮤니티",
-    "bike_register": "바이크", "bike_delete": "바이크", "bike_maintenance_write": "바이크",
-    "bike_find_repair_shop": "바이크", "bike_check_insurance": "바이크",
-    "goal_set": "홈", "ad_banner_tap": "홈",
-    "notification_setting_change": "설정", "logout": "설정", "account_delete": "설정",
-    "map_service_tab_switch": "설정",
-}
+# --- 이벤트 매핑 (analytics_config.json에서 자동 로드) ---
+EVENT_NAME_MAP = get_event_name_map(config)
+EVENT_CATEGORY_MAP = get_event_category_map(config)
 
 CUSTOM_EVENTS = list(EVENT_NAME_MAP.keys())
 CUSTOM_EVENTS_SQL = ", ".join(f"'{e}'" for e in CUSTOM_EVENTS)

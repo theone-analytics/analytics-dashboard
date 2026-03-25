@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import env_selector, query, events_table
+from bigquery_client import env_selector, query, events_table, build_screen_category_sql
 
 st.set_page_config(page_title="화면 분석", page_icon="📱", layout="wide")
 st.title("📱 화면 분석")
@@ -29,80 +29,8 @@ start_str = start_date.strftime("%Y%m%d")
 end_str = end_date.strftime("%Y%m%d")
 table = events_table(config)
 
-# --- 화면 카테고리 매핑 ---
-SCREEN_CATEGORY_SQL = """
-    SELECT '홈' AS name, '홈' AS category UNION ALL
-    SELECT '일별 상세', '홈' UNION ALL
-    SELECT '운행 상세', '홈' UNION ALL
-    SELECT 'GPS 추적', '홈' UNION ALL
-    SELECT '월간 프로모션', '홈' UNION ALL
-    SELECT '공지 목록', '홈' UNION ALL
-    SELECT '공지 상세', '홈' UNION ALL
-    SELECT '서비스 더보기', '홈' UNION ALL
-    SELECT '홈 편집', '홈' UNION ALL
-    SELECT '장부', '장부' UNION ALL
-    SELECT '수입 상세', '장부' UNION ALL
-    SELECT '월간 프로모션 상세', '장부' UNION ALL
-    SELECT '장부 상세', '장부' UNION ALL
-    SELECT '정산 입력', '장부' UNION ALL
-    SELECT '지갑', '지갑' UNION ALL
-    SELECT '플랫폼 연동', '지갑' UNION ALL
-    SELECT '타플랫폼 연동', '지갑' UNION ALL
-    SELECT '계좌 등록', '지갑' UNION ALL
-    SELECT '출금', '지갑' UNION ALL
-    SELECT '계좌 상세', '지갑' UNION ALL
-    SELECT '공제 관리', '지갑' UNION ALL
-    SELECT '공제 상세 (미처리)', '지갑' UNION ALL
-    SELECT '공제 상세', '지갑' UNION ALL
-    SELECT '순서 편집', '지갑' UNION ALL
-    SELECT '바이크', '바이크' UNION ALL
-    SELECT '바이크 등록', '바이크' UNION ALL
-    SELECT '바이크 정보', '바이크' UNION ALL
-    SELECT '바이크 관리', '바이크' UNION ALL
-    SELECT '정비 기록', '바이크' UNION ALL
-    SELECT '정비 기록 작성', '바이크' UNION ALL
-    SELECT '바이크 검색', '바이크' UNION ALL
-    SELECT '바이크 보험', '바이크' UNION ALL
-    SELECT '커뮤니티', '커뮤니티' UNION ALL
-    SELECT '게시글 상세', '커뮤니티' UNION ALL
-    SELECT '인기글', '커뮤니티' UNION ALL
-    SELECT '이벤트/뉴스', '커뮤니티' UNION ALL
-    SELECT '커뮤니티 검색', '커뮤니티' UNION ALL
-    SELECT '글쓰기 (자유)', '커뮤니티' UNION ALL
-    SELECT '글쓰기 (동네)', '커뮤니티' UNION ALL
-    SELECT '글쓰기 (수익인증)', '커뮤니티' UNION ALL
-    SELECT '댓글/답글', '커뮤니티' UNION ALL
-    SELECT '유저 프로필', '커뮤니티' UNION ALL
-    SELECT '차단 계정', '커뮤니티' UNION ALL
-    SELECT '구독 목록', '커뮤니티' UNION ALL
-    SELECT '활동 등급', '커뮤니티' UNION ALL
-    SELECT '신고', '커뮤니티' UNION ALL
-    SELECT '유저 프로필 (딥링크)', '커뮤니티' UNION ALL
-    SELECT '게시글 상세 (딥링크)', '커뮤니티' UNION ALL
-    SELECT '마이페이지', '설정' UNION ALL
-    SELECT '프로필 수정', '설정' UNION ALL
-    SELECT '알림 목록', '설정' UNION ALL
-    SELECT '알림 설정', '설정' UNION ALL
-    SELECT '플랫폼 관리', '설정' UNION ALL
-    SELECT '플랫폼 추가', '설정' UNION ALL
-    SELECT '내 동네 설정', '설정' UNION ALL
-    SELECT '동네 인증', '설정' UNION ALL
-    SELECT '동네 인증 도움말', '설정' UNION ALL
-    SELECT '본인 인증', '설정' UNION ALL
-    SELECT '지출 항목 관리', '설정' UNION ALL
-    SELECT '지출 항목 추가', '설정' UNION ALL
-    SELECT '화면 테마', '설정' UNION ALL
-    SELECT '지도 서비스', '설정' UNION ALL
-    SELECT '회원 탈퇴', '설정' UNION ALL
-    SELECT '스플래시', '온보딩' UNION ALL
-    SELECT '온보딩', '온보딩' UNION ALL
-    SELECT '로그인', '온보딩' UNION ALL
-    SELECT '심사용 로그인', '온보딩' UNION ALL
-    SELECT '권한 설정', '온보딩' UNION ALL
-    SELECT '닉네임 설정', '온보딩' UNION ALL
-    SELECT '플랫폼 설정', '온보딩' UNION ALL
-    SELECT '지역 설정', '온보딩'
-"""
+# --- 화면 카테고리 매핑 (analytics_config.json에서 자동 생성) ---
+SCREEN_CATEGORY_SQL = build_screen_category_sql(config)
 
 
 @st.cache_data(ttl=3600)
