@@ -1,0 +1,67 @@
+name: Generate Dashboard Page
+
+on:
+  repository_dispatch:
+    types: [generate-dashboard]
+
+permissions:
+  contents: write
+  models: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install openai
+
+      - name: Run generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/generate_dashboard.py \
+            --action generate \
+            --prompt "${{ github.event.client_payload.prompt }}" \
+            --requester "${{ github.event.client_payload.requester }}"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pages/custom/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            PROMPT="${{ github.event.client_payload.prompt }}"
+            git commit -m "dashboard: ${PROMPT:0:50}"
+            git push
+          fi
+
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "No Slack webhook configured, skipping notification"
+            exit 0
+          fi
+          STATUS="${{ job.status }}"
+          PROMPT="${{ github.event.client_payload.prompt }}"
+          REQUESTER="${{ github.event.client_payload.requester }}"
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+            MSG="대시보드가 생성되었습니다"
+          else
+            EMOJI="❌"
+            MSG="대시보드 생성에 실패했습니다"
+          fi
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"${EMOJI} ${MSG}\n요청: ${PROMPT}\n요청자: ${REQUESTER}\"}"

@@ -72,6 +72,32 @@ type = "service_account"
 - `main` push → 자동 배포
 - Secrets 변경 시 Streamlit Cloud에서 Save → Reboot app 필요
 
+## Custom Dashboard 자동 생성
+
+### 구조
+- `pages/custom/*.py` — AI가 생성한 대시보드 페이지
+- `scripts/generate_dashboard.py` — 생성 스크립트 (GitHub Actions에서 실행)
+- `scripts/prompts/system_prompt.md` — GPT-4o 시스템 프롬프트
+- `.github/workflows/generate-dashboard.yml` — GitHub Actions 워크플로우
+
+### 보호 페이지 (수정/삭제 금지)
+- `pages/1_사용자_현황.py`
+- `pages/2_화면_분석.py`
+- `pages/3_이벤트_분석.py`
+
+### 커스텀 페이지 규칙
+- 파일명: `custom_{slug}.py` (한글 slug 허용)
+- 위치: `pages/custom/` 디렉토리만
+- Slack에서 생성/삭제 가능
+- 생성 시 py_compile + 필수 패턴 검증
+
+### 흐름
+```
+Slack → GitHub repository_dispatch → GitHub Actions
+→ generate_dashboard.py → GitHub Models API (GPT-4o)
+→ 코드 생성/검증 → push → Streamlit 자동 배포
+```
+
 ## 주의사항
 
 - `secrets.toml`은 `.gitignore`에 포함 — 실제 키는 Streamlit Cloud Secrets에만 존재
