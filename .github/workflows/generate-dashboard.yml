@@ -3,6 +3,8 @@ name: Generate Dashboard Page
 on:
   issues:
     types: [opened]
+  repository_dispatch:
+    types: [generate-dashboard]
   workflow_dispatch:
     inputs:
       prompt:
@@ -37,6 +39,10 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "prompt=${{ github.event.inputs.prompt }}" >> $GITHUB_OUTPUT
             echo "requester=${{ github.event.inputs.requester }}" >> $GITHUB_OUTPUT
+            echo "is_issue=false" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "prompt=${{ github.event.client_payload.prompt }}" >> $GITHUB_OUTPUT
+            echo "requester=${{ github.event.client_payload.requester }}" >> $GITHUB_OUTPUT
             echo "is_issue=false" >> $GITHUB_OUTPUT
           else
             echo "prompt=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
