@@ -4,7 +4,6 @@ from datetime import date, timedelta
 
 from bigquery_client import project_env_selector, query, events_table, get_event_name_map, get_event_category_map, get_event_categories
 
-st.set_page_config(page_title="이벤트 분석", page_icon="🎯", layout="wide")
 st.title("🎯 이벤트 분석")
 
 # --- 환경 선택 ---

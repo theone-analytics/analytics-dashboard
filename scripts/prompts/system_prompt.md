@@ -24,7 +24,6 @@ from datetime import date, timedelta
 
 from bigquery_client import project_env_selector, query, events_table
 
-st.set_page_config(page_title="제목", page_icon="📊", layout="wide")
 st.title("📊 제목")
 
 # --- 프로젝트/환경 선택 ---

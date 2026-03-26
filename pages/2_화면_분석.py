@@ -4,7 +4,6 @@ from datetime import date, timedelta
 
 from bigquery_client import project_env_selector, query, events_table, build_screen_category_sql, get_screen_categories
 
-st.set_page_config(page_title="화면 분석", page_icon="📱", layout="wide")
 st.title("📱 화면 분석")
 
 # --- 환경 선택 ---

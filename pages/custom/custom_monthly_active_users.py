@@ -4,7 +4,6 @@ from datetime import date, timedelta
 
 from bigquery_client import project_env_selector, query, events_table
 
-st.set_page_config(page_title="월별 활성 사용자 추이", page_icon="📊", layout="wide")
 st.title("📊 월별 활성 사용자 추이")
 
 # --- 프로젝트/환경 선택 ---

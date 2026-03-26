@@ -107,6 +107,9 @@ def handle_create(prompt: str) -> str:
     title = result["title"]
     code = result["code"]
 
+    # app.py에서 page_config를 관리하므로 제거
+    code = re.sub(r'st\.set_page_config\([^)]*\)\n?', '', code)
+
     if not filename.startswith("custom_") or not filename.endswith(".py"):
         raise ValueError(f"잘못된 파일명: {filename}")
 

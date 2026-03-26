@@ -1,17 +1,24 @@
+import glob
 import streamlit as st
 
-st.set_page_config(
-    page_title="Analytics Dashboard",
-    page_icon="📊",
-    layout="wide",
-)
+# 커스텀 페이지 동적 로드
+custom_pages = sorted(glob.glob("pages/custom/custom_*.py"))
+custom_nav = []
+for path in custom_pages:
+    filename = path.split("/")[-1].replace("custom_", "").replace(".py", "").replace("_", " ").title()
+    custom_nav.append(st.Page(path, title=filename))
 
-st.title("📊 Analytics Dashboard")
-st.markdown("사이드바에서 페이지를 선택하세요.")
+# 기본 페이지
+default_pages = [
+    st.Page("pages/1_사용자_현황.py", title="사용자 현황"),
+    st.Page("pages/2_화면_분석.py", title="화면 분석"),
+    st.Page("pages/3_이벤트_분석.py", title="이벤트 분석"),
+]
 
-st.markdown("""
-### 페이지 목록
-- **사용자 현황** — DAU, OS 비율, 앱 버전 분포
-- **화면 분석** — 화면별 조회수, 체류시간
-- **이벤트 분석** — 이벤트별 발생 횟수, 카테고리 분포
-""")
+# 네비게이션 구성
+nav = {"기본": default_pages}
+if custom_nav:
+    nav["커스텀"] = custom_nav
+
+pg = st.navigation(nav)
+pg.run()

@@ -4,7 +4,6 @@ from datetime import date, timedelta
 
 from bigquery_client import project_env_selector, query, events_table
 
-st.set_page_config(page_title="사용자 현황", page_icon="👥", layout="wide")
 st.title("👥 사용자 현황")
 
 # --- 환경 선택 ---
