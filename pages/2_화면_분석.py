@@ -124,6 +124,7 @@ if not daily_df.empty:
         labels={"date": "날짜", "value": "수", "variable": "지표"},
     )
     fig.update_layout(hovermode="x unified")
+    fig.update_xaxes(tickformat="%m/%d")
     st.plotly_chart(fig, use_container_width=True)
 
 # --- TOP 15 차트 ---

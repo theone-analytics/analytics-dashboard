@@ -107,6 +107,7 @@ if not dau_df.empty:
         labels={"date": "날짜", "users": "사용자 수"},
     )
     fig.update_layout(hovermode="x unified")
+    fig.update_xaxes(tickformat="%m/%d")
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("데이터가 없습니다.")

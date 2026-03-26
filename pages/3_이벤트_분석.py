@@ -108,6 +108,7 @@ if not daily_df.empty:
         labels={"date": "날짜", "count": "이벤트 수"},
     )
     fig.update_layout(hovermode="x unified")
+    fig.update_xaxes(tickformat="%m/%d")
     st.plotly_chart(fig, use_container_width=True)
 
 # --- 차트 ---
