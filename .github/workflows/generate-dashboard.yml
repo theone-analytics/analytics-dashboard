@@ -1,16 +1,18 @@
 name: Generate Dashboard Page
 
 on:
-  repository_dispatch:
-    types: [generate-dashboard]
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
+  issues: write
   models: read
 
 jobs:
   generate:
     runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'dashboard-request') || true
     steps:
       - uses: actions/checkout@v4
 
@@ -27,8 +29,8 @@ jobs:
         run: |
           python scripts/generate_dashboard.py \
             --action generate \
-            --prompt "${{ github.event.client_payload.prompt }}" \
-            --requester "${{ github.event.client_payload.requester }}"
+            --prompt "${{ github.event.issue.title }}" \
+            --requester "${{ github.event.issue.user.login }}"
 
       - name: Commit and push
         run: |
@@ -38,10 +40,26 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            PROMPT="${{ github.event.client_payload.prompt }}"
+            PROMPT="${{ github.event.issue.title }}"
             git commit -m "dashboard: ${PROMPT:0:50}"
             git push
           fi
+
+      - name: Close issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue close ${{ github.event.issue.number }} \
+            --comment "✅ 대시보드가 생성되었습니다. 잠시 후 배포됩니다."
+
+      - name: Comment on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "❌ 대시보드 생성에 실패했습니다. 다시 시도해주세요."
 
       - name: Notify Slack
         if: always()
@@ -53,8 +71,8 @@ jobs:
             exit 0
           fi
           STATUS="${{ job.status }}"
-          PROMPT="${{ github.event.client_payload.prompt }}"
-          REQUESTER="${{ github.event.client_payload.requester }}"
+          PROMPT="${{ github.event.issue.title }}"
+          REQUESTER="${{ github.event.issue.user.login }}"
           if [ "$STATUS" = "success" ]; then
             EMOJI="✅"
             MSG="대시보드가 생성되었습니다"
