@@ -12,88 +12,49 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: pip install openai
-
-      - name: Run generator
+          python-version: "3.12"
+      - run: pip install openai
+      - name: Generate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMPT: ${{ github.event.issue.title }}
-          REQUESTER: ${{ github.event.issue.user.login }}
         run: |
-          python scripts/generate_dashboard.py \
-            --action generate \
-            --prompt "$PROMPT" \
-            --requester "$REQUESTER"
-
-      - name: Commit and push
-        env:
-          PROMPT: ${{ github.event.issue.title }}
+          PROMPT="${{ github.event.issue.title }}"
+          REQUESTER="${{ github.event.issue.user.login }}"
+          python scripts/generate_dashboard.py --action generate --prompt "$PROMPT" --requester "$REQUESTER"
+      - name: Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pages/custom/
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "dashboard: ${PROMPT:0:50}"
-            git push
-          fi
-
-      - name: Close issue on success
+          git diff --cached --quiet || git commit -m "dashboard" && git push
+      - name: Close
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMPT: ${{ github.event.issue.title }}
-        run: |
-          if echo "$PROMPT" | grep -qiE "삭제|제거|delete|remove|지워"; then
-            gh issue close ${{ github.event.issue.number }} --comment "✅ 대시보드가 삭제되었습니다."
-          else
-            gh issue close ${{ github.event.issue.number }} --comment "✅ 대시보드가 생성되었습니다."
-          fi
-
-      - name: Comment on failure
+        run: gh issue close ${{ github.event.issue.number }} --comment "done"
+      - name: Fail
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMPT: ${{ github.event.issue.title }}
-        run: |
-          if echo "$PROMPT" | grep -qiE "삭제|제거|delete|remove|지워"; then
-            gh issue comment ${{ github.event.issue.number }} --body "❌ 대시보드 삭제에 실패했습니다."
-          else
-            gh issue comment ${{ github.event.issue.number }} --body "❌ 대시보드 생성에 실패했습니다."
-          fi
-
-      - name: Notify Slack
+        run: gh issue comment ${{ github.event.issue.number }} --body "failed"
+      - name: Slack
         if: always()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMPT: ${{ github.event.issue.title }}
-          REQUESTER: ${{ github.event.issue.user.login }}
         run: |
-          if [ -z "$SLACK_WEBHOOK_URL" ]; then
-            echo "No Slack webhook configured, skipping"
-            exit 0
-          fi
+          test -z "$SLACK_WEBHOOK_URL" && exit 0
+          PROMPT="${{ github.event.issue.title }}"
+          REQUESTER="${{ github.event.issue.user.login }}"
+          NAME=$(gh api "users/$REQUESTER" --jq ".name // .login" 2>/dev/null || echo "$REQUESTER")
           STATUS="${{ job.status }}"
-          DISPLAY_NAME=$(gh api "users/${REQUESTER}" --jq '.name // .login' 2>/dev/null || echo "$REQUESTER")
-          IS_DELETE=$(echo "$PROMPT" | grep -ciE "삭제|제거|delete|remove|지워" || true)
+          IS_DEL=$(echo "$PROMPT" | grep -ciE "삭제|제거|delete|remove" || true)
           if [ "$STATUS" = "success" ]; then
-            EMOJI="✅"
-            [ "$IS_DELETE" -gt 0 ] && MSG="대시보드가 삭제되었습니다" || MSG="대시보드가 생성되었습니다"
+            [ "$IS_DEL" -gt 0 ] && MSG="삭제 완료" || MSG="생성 완료"
           else
-            EMOJI="❌"
-            [ "$IS_DELETE" -gt 0 ] && MSG="대시보드 삭제에 실패했습니다" || MSG="대시보드 생성에 실패했습니다"
+            [ "$IS_DEL" -gt 0 ] && MSG="삭제 실패" || MSG="생성 실패"
           fi
-          PAYLOAD=$(jq -n --arg text "${EMOJI} ${MSG}
-요청: ${PROMPT}
-요청자: ${DISPLAY_NAME}" '{text: $text}')
-          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" || echo "Slack 전송 실패"
+          PAYLOAD=$(jq -n --arg t "$MSG - $PROMPT ($NAME)" '{text:$t}')
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" || true
