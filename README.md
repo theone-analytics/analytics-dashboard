@@ -12,7 +12,7 @@ Firebase Analytics 데이터를 시각화하는 Streamlit 대시보드입니다.
 
 ## 배포
 
-- **레포**: `theone-analytics/analytics-dashboard'
+- **레포**: `theone-analytics/analytics-dashboard` (public)
 - **플랫폼**: Streamlit Community Cloud
 - **자동 배포**: `main` 브랜치에 push 시 자동 반영
 
