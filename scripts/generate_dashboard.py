@@ -18,7 +18,13 @@ FORBIDDEN_PATTERNS = [
     "subprocess", "os.system", "shutil", "__import__", "eval(", "exec(",
     'config["project"]', "config['project']",  # 올바른 키: config["project_id"]
     "screen_name_map", "event_name_map",  # 존재하지 않는 테이블
+    "set_page_config",  # app.py에서 관리
+    "matplotlib", "plt.",  # plotly만 사용
+    "pd.read_gbq", "read_gbq",  # query() 함수만 사용
+    "INFORMATION_SCHEMA", "__TABLES__",  # 접근 불가
 ]
+
+MAX_RETRIES = 2
 
 
 def load_system_prompt() -> str:
@@ -70,6 +76,22 @@ def validate_code(code: str) -> tuple[bool, str]:
     return True, ""
 
 
+def parse_response(content: str) -> dict:
+    """GPT 응답에서 JSON을 추출하고 파싱"""
+    content = content.strip()
+
+    # 코드 펜스 제거 (멀티라인 지원)
+    content = re.sub(r"^```(?:json)?\s*\n?", "", content)
+    content = re.sub(r"\n?\s*```\s*$", "", content)
+
+    # JSON 객체 추출 (앞뒤 텍스트가 있을 경우)
+    match = re.search(r"\{[\s\S]*\}", content)
+    if match:
+        content = match.group(0)
+
+    return json.loads(content)
+
+
 def generate_code(prompt: str) -> dict:
     system_prompt = load_system_prompt()
     existing_pages = list_custom_pages()
@@ -79,29 +101,34 @@ def generate_code(prompt: str) -> dict:
 기존 커스텀 페이지: {json.dumps(existing_pages, ensure_ascii=False)}
 
 위 요청에 맞는 Streamlit 대시보드 페이지를 생성해주세요.
-기존 페이지와 파일명이 겹치지 않도록 해주세요."""
+기존 페이지와 파일명이 겹치지 않도록 해주세요.
+반드시 JSON 형식으로만 응답하세요."""
 
     client = OpenAI(
         base_url="https://models.inference.ai.azure.com",
         api_key=os.environ["GITHUB_TOKEN"],
     )
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0.3,
-    )
+    last_error = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.2,
+            )
 
-    content = response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            return parse_response(content)
+        except (json.JSONDecodeError, KeyError) as e:
+            last_error = e
+            print(f"시도 {attempt + 1}/{MAX_RETRIES} 실패: {e}")
+            continue
 
-    # JSON 파싱 (코드 펜스 제거)
-    content = re.sub(r"^```(?:json)?\s*", "", content)
-    content = re.sub(r"\s*```$", "", content)
-
-    return json.loads(content)
+    raise ValueError(f"JSON 파싱 {MAX_RETRIES}회 실패: {last_error}")
 
 
 def handle_create(prompt: str) -> str:
@@ -111,8 +138,8 @@ def handle_create(prompt: str) -> str:
     title = result["title"]
     code = result["code"]
 
-    # app.py에서 page_config를 관리하므로 제거
-    code = re.sub(r'st\.set_page_config\([^)]*\)\n?', '', code)
+    # app.py에서 page_config를 관리하므로 제거 (멀티라인 지원)
+    code = re.sub(r'st\.set_page_config\([^)]*\)\n?', '', code, flags=re.DOTALL)
 
     if not filename.startswith("custom_") or not filename.endswith(".py"):
         raise ValueError(f"잘못된 파일명: {filename}")
