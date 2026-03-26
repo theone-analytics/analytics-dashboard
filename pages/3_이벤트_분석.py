@@ -2,13 +2,13 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import env_selector, query, events_table, get_event_name_map, get_event_category_map
+from bigquery_client import project_env_selector, query, events_table, get_event_name_map, get_event_category_map, get_event_categories
 
 st.set_page_config(page_title="이벤트 분석", page_icon="🎯", layout="wide")
 st.title("🎯 이벤트 분석")
 
 # --- 환경 선택 ---
-config = env_selector()
+config = project_env_selector()
 
 # --- 이벤트 매핑 (analytics_config.json에서 자동 로드) ---
 EVENT_NAME_MAP = get_event_name_map(config)
@@ -39,7 +39,7 @@ start_str = start_date.strftime("%Y%m%d")
 end_str = end_date.strftime("%Y%m%d")
 table = events_table(config)
 
-categories = ["전체", "운행", "장부", "지갑", "커뮤니티", "바이크", "홈", "설정"]
+categories = get_event_categories(config)
 with col3:
     category_filter = st.selectbox("카테고리", categories)
 

@@ -2,13 +2,13 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import env_selector, query, events_table, build_screen_category_sql
+from bigquery_client import project_env_selector, query, events_table, build_screen_category_sql, get_screen_categories
 
 st.set_page_config(page_title="화면 분석", page_icon="📱", layout="wide")
 st.title("📱 화면 분석")
 
 # --- 환경 선택 ---
-config = env_selector()
+config = project_env_selector()
 
 # --- 필터 ---
 col1, col2, col3 = st.columns(3)
@@ -94,7 +94,7 @@ def get_screen_daily(start: str, end: str, _table: str, _config: dict):
 
 
 # --- 카테고리 필터 ---
-categories = ["전체", "홈", "장부", "지갑", "바이크", "커뮤니티", "설정", "온보딩", "기타"]
+categories = get_screen_categories(config)
 with col3:
     category_filter = st.selectbox("카테고리", categories)
 

@@ -2,13 +2,13 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 
-from bigquery_client import env_selector, query, events_table
+from bigquery_client import project_env_selector, query, events_table
 
 st.set_page_config(page_title="사용자 현황", page_icon="👥", layout="wide")
 st.title("👥 사용자 현황")
 
 # --- 환경 선택 ---
-config = env_selector()
+config = project_env_selector()
 
 # --- 날짜 필터 ---
 col1, col2 = st.columns(2)

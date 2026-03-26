@@ -5,27 +5,38 @@ import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-# 환경별 설정
-ENV_CONFIG = {
-    "Dev": {
-        "project_id": "baedalpartner-dev",
-        "dataset": "analytics_527323568",
-        "secret_key": "gcp_service_account_dev",
-        "config_url": "https://raw.githubusercontent.com/TheoneInternationalDeveloper/baedalpan/staging/assets/analytics_config.json",
-    },
-    "Prod": {
-        "project_id": "baedalpartner",
-        "dataset": "",  # TODO: prod 데이터셋 ID 확인 후 입력
-        "secret_key": "gcp_service_account_prod",
-        "config_url": "https://raw.githubusercontent.com/TheoneInternationalDeveloper/baedalpan/main/assets/analytics_config.json",
-    },
-}
+def _load_projects() -> dict:
+    """secrets.toml에서 프로젝트 목록 로드"""
+    projects_config = st.secrets["projects"]
+    keys = list(projects_config["keys"])
+    result = {}
+    for key in keys:
+        proj = projects_config[key]
+        display_name = proj["display_name"]
+        envs = {k: dict(v) for k, v in proj.items() if k != "display_name"}
+        result[key] = {"display_name": display_name, "envs": envs}
+    return result
 
 
-def env_selector():
-    """사이드바 환경 선택 — 각 페이지 상단에서 1회 호출"""
-    env = st.sidebar.selectbox("환경", list(ENV_CONFIG.keys()))
-    return ENV_CONFIG[env]
+def project_env_selector():
+    """사이드바 프로젝트 + 환경 선택 — 각 페이지 상단에서 1회 호출"""
+    projects = _load_projects()
+
+    project_keys = list(projects.keys())
+    display_names = [projects[k]["display_name"] for k in project_keys]
+
+    if len(project_keys) == 1:
+        selected_idx = 0
+        st.sidebar.markdown(f"**프로젝트:** {display_names[0]}")
+    else:
+        selected_display = st.sidebar.selectbox("프로젝트", display_names)
+        selected_idx = display_names.index(selected_display)
+
+    selected_key = project_keys[selected_idx]
+    envs = projects[selected_key]["envs"]
+
+    env = st.sidebar.selectbox("환경", list(envs.keys()))
+    return envs[env]
 
 
 @st.cache_resource
@@ -93,6 +104,20 @@ def get_event_category_map(config: dict) -> dict:
     """이벤트 카테고리 매핑 (event name → 카테고리)"""
     data = load_analytics_config(config["config_url"])
     return {k: v["category"] for k, v in data.get("events", {}).items()}
+
+
+def get_screen_categories(config: dict) -> list[str]:
+    """analytics_config.json에서 화면 카테고리 목록 동적 로드"""
+    data = load_analytics_config(config["config_url"])
+    categories = sorted(set(v["category"] for v in data.get("screens", {}).values()))
+    return ["전체"] + categories + ["기타"]
+
+
+def get_event_categories(config: dict) -> list[str]:
+    """analytics_config.json에서 이벤트 카테고리 목록 동적 로드"""
+    data = load_analytics_config(config["config_url"])
+    categories = sorted(set(v["category"] for v in data.get("events", {}).values()))
+    return ["전체"] + categories
 
 
 def build_screen_category_sql(config: dict) -> str:
