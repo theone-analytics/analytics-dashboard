@@ -14,7 +14,11 @@ CUSTOM_DIR = os.path.join(os.path.dirname(__file__), "..", "pages", "custom")
 PROMPT_PATH = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
 
 REQUIRED_PATTERNS = ["project_env_selector()", "@st.cache_data", "use_container_width=True"]
-FORBIDDEN_PATTERNS = ["subprocess", "os.system", "shutil", "__import__", "eval(", "exec("]
+FORBIDDEN_PATTERNS = [
+    "subprocess", "os.system", "shutil", "__import__", "eval(", "exec(",
+    'config["project"]', "config['project']",  # 올바른 키: config["project_id"]
+    "screen_name_map", "event_name_map",  # 존재하지 않는 테이블
+]
 
 
 def load_system_prompt() -> str:
