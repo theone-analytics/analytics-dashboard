@@ -72,7 +72,7 @@ jobs:
           fi
           STATUS="${{ job.status }}"
           PROMPT="${{ github.event.issue.title }}"
-          REQUESTER="${{ github.event.issue.user.login }}"
+          REQUESTER=$(gh api users/${{ github.event.issue.user.login }} --jq '.name // "${{ github.event.issue.user.login }}"')
           if [ "$STATUS" = "success" ]; then
             EMOJI="✅"
             MSG="대시보드가 생성되었습니다"
