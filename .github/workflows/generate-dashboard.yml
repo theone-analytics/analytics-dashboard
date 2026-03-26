@@ -17,7 +17,6 @@ on:
 permissions:
   contents: write
   issues: write
-  models: read
 
 jobs:
   generate:
