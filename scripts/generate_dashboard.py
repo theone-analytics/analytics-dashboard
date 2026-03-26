@@ -130,6 +130,14 @@ def handle_delete(prompt: str) -> str:
     if not pages:
         raise ValueError("삭제할 커스텀 페이지가 없습니다.")
 
+    # 전체 삭제
+    all_keywords = ["전체", "모두", "all", "전부"]
+    if any(kw in prompt.lower() for kw in all_keywords):
+        for page in pages:
+            os.remove(os.path.join(CUSTOM_DIR, page))
+        print(f"전체 삭제 완료: {pages}")
+        return ", ".join(pages)
+
     target = find_page_to_delete(prompt, pages)
     if not target:
         raise ValueError(f"매칭되는 페이지를 찾을 수 없습니다. 현재 페이지: {pages}")
