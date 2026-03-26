@@ -26,11 +26,13 @@ jobs:
       - name: Run generator
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT: ${{ github.event.issue.title }}
+          REQUESTER: ${{ github.event.issue.user.login }}
         run: |
           python scripts/generate_dashboard.py \
             --action generate \
-            --prompt "${{ github.event.issue.title }}" \
-            --requester "${{ github.event.issue.user.login }}"
+            --prompt "$PROMPT" \
+            --requester "$REQUESTER"
 
       - name: Commit and push
         run: |

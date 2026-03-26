@@ -16,12 +16,12 @@ PROMPT_PATH = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.
 REQUIRED_PATTERNS = ["project_env_selector()", "@st.cache_data", "use_container_width=True"]
 FORBIDDEN_PATTERNS = [
     "subprocess", "os.system", "shutil", "__import__", "eval(", "exec(",
-    'config["project"]', "config['project']",  # 올바른 키: config["project_id"]
-    "screen_name_map", "event_name_map",  # 존재하지 않는 테이블
-    "set_page_config",  # app.py에서 관리
-    "matplotlib", "plt.",  # plotly만 사용
-    "pd.read_gbq", "read_gbq",  # query() 함수만 사용
-    "INFORMATION_SCHEMA", "__TABLES__",  # 접근 불가
+    'config["project"]', "config['project']",
+    "screen_name_map", "event_name_map",
+    "set_page_config",
+    "matplotlib", "plt.",
+    "pd.read_gbq", "read_gbq",
+    "INFORMATION_SCHEMA", "__TABLES__",
 ]
 
 MAX_RETRIES = 2
@@ -34,23 +34,53 @@ def load_system_prompt() -> str:
 
 def list_custom_pages() -> list[str]:
     pages = glob.glob(os.path.join(CUSTOM_DIR, "custom_*.py"))
-    return [os.path.basename(p) for p in pages]
+    return [os.path.basename(p) for p in sorted(pages)]
 
 
 def detect_intent(prompt: str) -> str:
+    prompt_lower = prompt.lower()
     delete_keywords = ["삭제", "제거", "delete", "remove", "지워"]
+    modify_keywords = ["수정", "변경", "업데이트", "update", "modify", "바꿔"]
+
     for kw in delete_keywords:
-        if kw in prompt.lower():
+        if kw in prompt_lower:
             return "delete"
+
+    for kw in modify_keywords:
+        if kw in prompt_lower:
+            return "modify"
+
     return "create"
 
 
 def find_page_to_delete(prompt: str, pages: list[str]) -> str | None:
     prompt_lower = prompt.lower().replace(" ", "")
+
+    # 1. 영문 slug 매칭 (custom_daily_new_users.py → "dailynewusers")
     for page in pages:
         name = page.replace("custom_", "").replace(".py", "").replace("_", "")
         if name in prompt_lower:
             return page
+
+    # 2. 파일명 직접 매칭 (custom_daily_new_users)
+    for page in pages:
+        filename_no_ext = page.replace(".py", "")
+        if filename_no_ext in prompt_lower.replace(" ", ""):
+            return page
+
+    # 3. 부분 매칭 (가장 많이 겹치는 페이지)
+    best_match = None
+    best_score = 0
+    for page in pages:
+        parts = page.replace("custom_", "").replace(".py", "").split("_")
+        score = sum(1 for part in parts if part in prompt_lower)
+        if score > best_score:
+            best_score = score
+            best_match = page
+
+    if best_score >= 1:
+        return best_match
+
     return None
 
 
@@ -62,6 +92,13 @@ def validate_code(code: str) -> tuple[bool, str]:
     for pattern in FORBIDDEN_PATTERNS:
         if pattern in code:
             return False, f"금지된 패턴: {pattern}"
+
+    # from bigquery_client import 확인
+    if "from bigquery_client import" not in code:
+        return False, "bigquery_client import 누락"
+
+    # query() 함수가 cached 함수 안에서만 호출되는지는 구문 분석이 복잡하므로
+    # 최소한 @st.cache_data가 있는지만 확인 (위에서 이미 체크)
 
     with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w") as f:
         f.write(code)
@@ -89,7 +126,14 @@ def parse_response(content: str) -> dict:
     if match:
         content = match.group(0)
 
-    return json.loads(content)
+    result = json.loads(content)
+
+    # 필수 키 확인
+    for key in ["filename", "title", "code"]:
+        if key not in result:
+            raise KeyError(f"JSON에 '{key}' 키가 없습니다")
+
+    return result
 
 
 def generate_code(prompt: str) -> dict:
@@ -144,6 +188,10 @@ def handle_create(prompt: str) -> str:
     if not filename.startswith("custom_") or not filename.endswith(".py"):
         raise ValueError(f"잘못된 파일명: {filename}")
 
+    # 파일명 안전성 검사
+    if ".." in filename or "/" in filename:
+        raise ValueError(f"위험한 파일명: {filename}")
+
     is_valid, error = validate_code(code)
     if not is_valid:
         raise ValueError(f"코드 검증 실패: {error}")
@@ -162,7 +210,7 @@ def handle_delete(prompt: str) -> str:
         raise ValueError("삭제할 커스텀 페이지가 없습니다.")
 
     # 전체 삭제
-    all_keywords = ["전체", "모두", "모든", "all", "전부"]
+    all_keywords = ["전체", "모두", "모든", "all", "전부", "다"]
     if any(kw in prompt.lower() for kw in all_keywords):
         for page in pages:
             os.remove(os.path.join(CUSTOM_DIR, page))
@@ -171,13 +219,33 @@ def handle_delete(prompt: str) -> str:
 
     target = find_page_to_delete(prompt, pages)
     if not target:
-        raise ValueError(f"매칭되는 페이지를 찾을 수 없습니다. 현재 페이지: {pages}")
+        page_list = "\n".join(f"  - {p}" for p in pages)
+        raise ValueError(f"매칭되는 페이지를 찾을 수 없습니다.\n현재 페이지:\n{page_list}")
 
     filepath = os.path.join(CUSTOM_DIR, target)
     os.remove(filepath)
 
     print(f"삭제 완료: {target}")
     return target
+
+
+def handle_modify(prompt: str) -> str:
+    """수정 요청 → 삭제 후 재생성"""
+    pages = list_custom_pages()
+    if not pages:
+        raise ValueError("수정할 커스텀 페이지가 없습니다. 먼저 생성해주세요.")
+
+    target = find_page_to_delete(prompt, pages)
+    if target:
+        os.remove(os.path.join(CUSTOM_DIR, target))
+        print(f"기존 페이지 삭제: {target}")
+
+    # 삭제 키워드 제거 후 생성
+    clean_prompt = prompt
+    for kw in ["수정", "변경", "업데이트", "update", "modify", "바꿔"]:
+        clean_prompt = clean_prompt.replace(kw, "")
+
+    return handle_create(clean_prompt.strip())
 
 
 def main():
@@ -187,11 +255,17 @@ def main():
     parser.add_argument("--requester", default="unknown")
     args = parser.parse_args()
 
+    if not args.prompt.strip():
+        raise ValueError("빈 요청입니다.")
+
     intent = detect_intent(args.prompt)
 
     if intent == "delete":
         result = handle_delete(args.prompt)
         print(f"결과: {result} 삭제됨")
+    elif intent == "modify":
+        result = handle_modify(args.prompt)
+        print(f"결과: {result} 수정됨")
     else:
         result = handle_create(args.prompt)
         print(f"결과: {result} 생성됨")
