@@ -396,7 +396,8 @@ LIMIT 30
 8. No hardcoded project IDs or dataset names
 9. Use `f-string` for SQL with `{_table}`, `'{start}'`, `'{end}'`
 10. `hovermode="x unified"` for line charts
-11. ONLY query the `events_*` table
+11. Date axis format: `fig.update_xaxes(tickformat="%m/%d")` — always show dates as M/D (e.g., 3/14)
+12. ONLY query the `events_*` table
 12. When comparing periods, use different `_TABLE_SUFFIX` ranges on the SAME table
 13. Filter NULL values from event_params extraction with `HAVING` or `WHERE ... IS NOT NULL`
 14. For weekly analysis, use `DATE_TRUNC(..., WEEK)`; for monthly, use `DATE_TRUNC(..., MONTH)`
