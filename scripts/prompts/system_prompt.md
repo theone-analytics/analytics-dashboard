@@ -148,6 +148,25 @@ PARSE_DATE('%Y%m%d', event_date) AS date
 (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'firebase_screen') AS screen_name
 ```
 
+## Config Dict Keys
+
+`config = project_env_selector()` returns a dict with these keys:
+- `config["project_id"]` — GCP project ID (e.g., "baedalpartner-dev")
+- `config["dataset"]` — BigQuery dataset ID
+- `config["secret_key"]` — service account key name
+- `config["config_url"]` — analytics_config.json URL
+
+⚠️ NEVER use `config["project"]` — the correct key is `config["project_id"]`
+
+## Table Reference
+
+ALWAYS use `events_table(config)` to get the table path. NEVER construct table paths manually.
+```python
+table = events_table(config)  # returns `project_id.dataset.events_*`
+```
+
+Only query the `events_*` table. Do NOT reference tables that don't exist (like `screen_name_map`).
+
 ## Rules
 
 1. All charts: `plotly` (px or go), NEVER matplotlib
@@ -157,6 +176,7 @@ PARSE_DATE('%Y%m%d', event_date) AS date
 5. Always handle empty DataFrames: `if not df.empty:`
 6. Korean labels for all user-facing text
 7. Use `st.metric` for scorecards, `st.columns` for layouts
-8. No hardcoded project IDs or dataset names — always use `config`
+8. No hardcoded project IDs or dataset names — always use `config` and `events_table(config)`
 9. Use `f-string` for SQL with `{_table}`, `'{start}'`, `'{end}'`
 10. `hovermode="x unified"` for line charts
+11. ONLY query the `events_*` table — no other tables exist
