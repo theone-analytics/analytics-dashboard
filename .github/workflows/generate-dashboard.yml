@@ -100,6 +100,9 @@ jobs:
               MSG="대시보드 생성에 실패했습니다"
             fi
           fi
-          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+          PAYLOAD=$(jq -n --arg text "${EMOJI} ${MSG}
+요청: ${PROMPT}
+요청자: ${REQUESTER}" '{text: $text}')
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
-            -d "{\"text\": \"${EMOJI} ${MSG}\n요청: ${PROMPT}\n요청자: ${REQUESTER}\"}"
+            -d "$PAYLOAD" || echo "Slack 알림 전송 실패"
