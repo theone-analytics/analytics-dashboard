@@ -3,6 +3,14 @@ name: Generate Dashboard Page
 on:
   issues:
     types: [opened]
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: '대시보드 요청'
+        required: true
+      requester:
+        description: '요청자'
+        default: 'manual-test'
 
 permissions:
   contents: write
@@ -12,7 +20,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.issue.labels.*.name, 'bug') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.issue.labels.*.name, 'bug') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,11 +31,24 @@ jobs:
       - name: Install dependencies
         run: pip install openai
 
+      - name: Set variables
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "prompt=${{ github.event.inputs.prompt }}" >> $GITHUB_OUTPUT
+            echo "requester=${{ github.event.inputs.requester }}" >> $GITHUB_OUTPUT
+            echo "is_issue=false" >> $GITHUB_OUTPUT
+          else
+            echo "prompt=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
+            echo "requester=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
+            echo "is_issue=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run generator
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMPT: ${{ github.event.issue.title }}
-          REQUESTER: ${{ github.event.issue.user.login }}
+          PROMPT: ${{ steps.vars.outputs.prompt }}
+          REQUESTER: ${{ steps.vars.outputs.requester }}
         run: |
           python scripts/generate_dashboard.py \
             --action generate \
@@ -35,6 +56,8 @@ jobs:
             --requester "$REQUESTER"
 
       - name: Commit and push
+        env:
+          PROMPT: ${{ steps.vars.outputs.prompt }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -42,17 +65,16 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            PROMPT="${{ github.event.issue.title }}"
             git commit -m "dashboard: ${PROMPT:0:50}"
             git push
           fi
 
       - name: Close issue
-        if: success()
+        if: success() && steps.vars.outputs.is_issue == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT: ${{ steps.vars.outputs.prompt }}
         run: |
-          PROMPT="${{ github.event.issue.title }}"
           if echo "$PROMPT" | grep -qiE "삭제|제거|delete|remove|지워"; then
             COMMENT="✅ 대시보드가 삭제되었습니다."
           else
@@ -61,11 +83,11 @@ jobs:
           gh issue close ${{ github.event.issue.number }} --comment "$COMMENT"
 
       - name: Comment on failure
-        if: failure()
+        if: failure() && steps.vars.outputs.is_issue == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT: ${{ steps.vars.outputs.prompt }}
         run: |
-          PROMPT="${{ github.event.issue.title }}"
           if echo "$PROMPT" | grep -qiE "삭제|제거|delete|remove|지워"; then
             COMMENT="❌ 대시보드 삭제에 실패했습니다. 다시 시도해주세요."
           else
@@ -78,15 +100,16 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT: ${{ steps.vars.outputs.prompt }}
+          REQUESTER: ${{ steps.vars.outputs.requester }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "No Slack webhook configured, skipping notification"
             exit 0
           fi
           STATUS="${{ job.status }}"
-          PROMPT="${{ github.event.issue.title }}"
-          REQUESTER=$(gh api users/${{ github.event.issue.user.login }} --jq '.name // "${{ github.event.issue.user.login }}"')
-          IS_DELETE=$(echo "$PROMPT" | grep -ciE "삭제|제거|delete|remove|지워")
+          DISPLAY_NAME=$(gh api "users/${REQUESTER}" --jq '.name // "'${REQUESTER}'"' 2>/dev/null || echo "$REQUESTER")
+          IS_DELETE=$(echo "$PROMPT" | grep -ciE "삭제|제거|delete|remove|지워" || true)
           if [ "$STATUS" = "success" ]; then
             EMOJI="✅"
             if [ "$IS_DELETE" -gt 0 ]; then
@@ -104,7 +127,7 @@ jobs:
           fi
           PAYLOAD=$(jq -n --arg text "${EMOJI} ${MSG}
 요청: ${PROMPT}
-요청자: ${REQUESTER}" '{text: $text}')
+요청자: ${DISPLAY_NAME}" '{text: $text}')
           curl -sf -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" || echo "Slack 알림 전송 실패"
