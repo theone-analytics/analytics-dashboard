@@ -57,5 +57,5 @@ jobs:
           else
             [ "$IS_DEL" -gt 0 ] && MSG="삭제 실패" || MSG="생성 실패"
           fi
-          PAYLOAD=$(jq -n --arg t "$MSG - $PROMPT ($NAME)" '{text:$t}')
+          PAYLOAD=$(jq -n --arg t "$MSG - $PROMPT" '{text:$t}')
           curl -sf -X POST "$SLACK_WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" || true
