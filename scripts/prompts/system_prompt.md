@@ -146,7 +146,24 @@ PARSE_DATE('%Y%m%d', event_date) AS date
 
 -- Screen name extraction
 (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'firebase_screen') AS screen_name
+
+-- Screen view count per screen (use this for screen analytics)
+SELECT
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'firebase_screen') AS screen_name,
+    COUNT(*) AS views,
+    COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+FROM {_table}
+WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+  AND event_name = 'screen_view'
+GROUP BY screen_name
+
+-- Inactive screens (screens with no views in recent period)
+-- Compare all-time screens vs recent screens using events_* only
+-- Use two subqueries on the same events_* table with different date ranges
 ```
+
+⚠️ ALL data comes from the `events_*` table. There are NO separate mapping tables.
+Screen names, event names, user data — everything is in `events_*`.
 
 ## Config Dict Keys
 
