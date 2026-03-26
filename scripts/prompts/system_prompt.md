@@ -391,7 +391,13 @@ LIMIT 30
 3. All queries: `@st.cache_data(ttl=3600)` decorator
 4. Cache function params with underscore prefix: `_table`, `_config`
 5. Always handle empty DataFrames: `if not df.empty:`
-6. Korean labels for all user-facing text and chart labels
+6. ALL user-facing text MUST be Korean:
+   - Chart titles: Korean (e.g., "일별 활성 사용자 추이")
+   - Axis labels: `labels={"date": "날짜", "users": "사용자 수", "count": "횟수", "views": "조회수"}`
+   - Metric labels: Korean (e.g., "총 사용자 수", "평균 체류시간")
+   - Column names in tables: `.rename(columns={"users": "사용자 수", ...})`
+   - Empty state: `st.info("데이터가 없습니다.")`
+   - Date format: M/D (e.g., 3/14) via `fig.update_xaxes(tickformat="%m/%d")`
 7. Use `st.metric` for scorecards, `st.columns` for layouts
 8. No hardcoded project IDs or dataset names
 9. Use `f-string` for SQL with `{_table}`, `'{start}'`, `'{end}'`
