@@ -1,5 +1,7 @@
 """Slack → GitHub Actions에서 호출되는 대시보드 페이지 생성 스크립트."""
 
+from __future__ import annotations
+
 import argparse
 import glob
 import json
@@ -93,8 +95,8 @@ def validate_code(code: str) -> tuple[bool, str]:
         if pattern in code:
             return False, f"금지된 패턴: {pattern}"
 
-    # from bigquery_client import 확인
-    if "from bigquery_client import" not in code:
+    # from bigquery_client import 확인 (주석이 아닌 실제 import만 인정)
+    if not re.search(r"^from bigquery_client import", code, re.MULTILINE):
         return False, "bigquery_client import 누락"
 
     # query() 함수가 cached 함수 안에서만 호출되는지는 구문 분석이 복잡하므로
@@ -137,15 +139,21 @@ def parse_response(content: str) -> dict:
 
 
 def generate_code(prompt: str) -> dict:
+    from datetime import date
+
     system_prompt = load_system_prompt()
     existing_pages = list_custom_pages()
+    today = date.today().isoformat()
 
-    user_message = f"""사용자 요청: {prompt}
+    user_message = f"""오늘 날짜: {today}
+
+사용자 요청: {prompt}
 
 기존 커스텀 페이지: {json.dumps(existing_pages, ensure_ascii=False)}
 
 위 요청에 맞는 Streamlit 대시보드 페이지를 생성해주세요.
 기존 페이지와 파일명이 겹치지 않도록 해주세요.
+날짜는 절대 하드코딩하지 말고 date.today() 기준으로 동적 계산하세요.
 반드시 JSON 형식으로만 응답하세요."""
 
     client = OpenAI(
