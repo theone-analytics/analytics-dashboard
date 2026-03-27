@@ -55,8 +55,28 @@ def detect_intent(prompt: str) -> str:
     return "create"
 
 
+def _extract_title_from_file(page: str) -> str | None:
+    """페이지 파일에서 st.title("...") 한글 제목 추출"""
+    filepath = os.path.join(CUSTOM_DIR, page)
+    try:
+        with open(filepath, "r") as f:
+            for line in f:
+                match = re.search(r'st\.title\(["\'](.+?)["\']\)', line)
+                if match:
+                    return re.sub(r'[^\w가-힣a-zA-Z0-9 ]', '', match.group(1)).strip()
+    except FileNotFoundError:
+        pass
+    return None
+
+
 def find_page_to_delete(prompt: str, pages: list[str]) -> str | None:
     prompt_lower = prompt.lower().replace(" ", "")
+
+    # 0. 한글 제목 매칭 ("3월 통계 삭제" → st.title("3월 통계")인 파일)
+    for page in pages:
+        title = _extract_title_from_file(page)
+        if title and title.replace(" ", "") in prompt_lower:
+            return page
 
     # 1. 영문 slug 매칭 (custom_daily_new_users.py → "dailynewusers")
     for page in pages:
