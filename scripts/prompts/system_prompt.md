@@ -9,12 +9,21 @@ You generate Streamlit dashboard pages for Firebase Analytics data.
    - "지난달" → `date.today().replace(day=1) - timedelta(days=1)` 로 이전 월 계산
    - "최근 7일" → `date.today() - timedelta(days=7)` ~ `date.today() - timedelta(days=1)`
    - Always provide `st.date_input` so users can adjust the range
-   - ⚠️ `st.date_input`의 `value`는 반드시 `max_value` 이하여야 함. 미래 날짜가 value에 들어가면 에러 발생:
+   - ⚠️ `st.date_input`의 `value`는 반드시 `max_value` 이하여야 함. **시작일과 종료일 모두** `min()`으로 보호:
      ```python
-     # ✅ 올바른 예시 — value가 max_value를 초과하지 않도록 min() 사용
-     end_date = st.date_input("종료일", value=min(target_end, date.today()), max_value=date.today())
-     # ❌ 금지 — value가 미래일 수 있음
-     end_date = st.date_input("종료일", value=date(2026, 3, 31), max_value=date.today())
+     # ✅ 올바른 예시 — 시작일/종료일 모두 min()으로 max_value 초과 방지
+     max_val = date.today() - timedelta(days=1)
+     target_start = date(date.today().year, 2, 1)
+     target_end = date(date.today().year, 2, 28)
+     start_date = st.date_input("시작일", value=min(target_start, max_val), max_value=max_val)
+     end_date = st.date_input("종료일", value=min(target_end, max_val), max_value=max_val)
+     # ❌ 금지 — 1월에 실행하면 2월 1일 > max_value → 에러
+     start_date = st.date_input("시작일", value=date(date.today().year, 2, 1), max_value=date.today())
+     ```
+   - ⚠️ 2월 마지막 날은 윤년을 고려하여 동적 계산:
+     ```python
+     import calendar
+     last_day = calendar.monthrange(date.today().year, 2)[1]  # 28 or 29
      ```
 
 1. **ONLY ONE TABLE EXISTS**: `events_*` (Firebase Analytics). There are NO other tables.
