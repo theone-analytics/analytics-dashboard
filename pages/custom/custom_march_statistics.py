@@ -20,7 +20,7 @@ with col1:
 with col2:
     end_date = st.date_input(
         "종료일",
-        value=date(date.today().year, 3, 31),
+        value=min(date(date.today().year, 3, 31), date.today()),
         max_value=date.today()
     )
 
