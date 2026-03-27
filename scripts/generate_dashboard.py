@@ -69,25 +69,30 @@ def _extract_title_from_file(page: str) -> str | None:
     return None
 
 
-def find_page_to_delete(prompt: str, pages: list[str]) -> str | None:
-    prompt_lower = prompt.lower().replace(" ", "")
+def _normalize(text: str) -> str:
+    """비교용 정규화: 특수문자 제거 + 소문자 + 공백 제거"""
+    return re.sub(r'[^\w가-힣a-zA-Z0-9]', '', text).lower()
 
-    # 0. 한글 제목 매칭 ("3월 통계 삭제" → st.title("3월 통계")인 파일)
+
+def find_page_to_delete(prompt: str, pages: list[str]) -> str | None:
+    prompt_norm = _normalize(prompt)
+
+    # 0. 한글 제목 매칭 ("A/B 테스트 삭제" → st.title("A/B 테스트")인 파일)
     for page in pages:
         title = _extract_title_from_file(page)
-        if title and title.replace(" ", "") in prompt_lower:
+        if title and _normalize(title) in prompt_norm:
             return page
 
     # 1. 영문 slug 매칭 (custom_daily_new_users.py → "dailynewusers")
     for page in pages:
         name = page.replace("custom_", "").replace(".py", "").replace("_", "")
-        if name in prompt_lower:
+        if name in prompt_norm:
             return page
 
     # 2. 파일명 직접 매칭 (custom_daily_new_users)
     for page in pages:
-        filename_no_ext = page.replace(".py", "")
-        if filename_no_ext in prompt_lower.replace(" ", ""):
+        filename_no_ext = page.replace(".py", "").replace("_", "")
+        if filename_no_ext in prompt_norm:
             return page
 
     # 3. 부분 매칭 (가장 많이 겹치는 페이지)
@@ -95,7 +100,7 @@ def find_page_to_delete(prompt: str, pages: list[str]) -> str | None:
     best_score = 0
     for page in pages:
         parts = page.replace("custom_", "").replace(".py", "").split("_")
-        score = sum(1 for part in parts if part in prompt_lower)
+        score = sum(1 for part in parts if part in prompt_norm)
         if score > best_score:
             best_score = score
             best_match = page
