@@ -33,10 +33,11 @@ def get_february_data(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users,
+        COUNT(DISTINCT user_id) AS users,
         COUNT(*) AS events
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
     GROUP BY date
     ORDER BY date
     """

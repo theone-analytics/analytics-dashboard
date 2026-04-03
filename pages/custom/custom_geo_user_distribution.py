@@ -34,9 +34,10 @@ def get_geo_data(start: str, end: str, _table: str, _config: dict):
     SELECT
         geo.country AS country,
         geo.city AS city,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
     GROUP BY country, city
     HAVING country IS NOT NULL AND city IS NOT NULL
     ORDER BY users DESC

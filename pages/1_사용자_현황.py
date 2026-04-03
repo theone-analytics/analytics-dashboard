@@ -35,9 +35,10 @@ def get_dau(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
     GROUP BY date
     ORDER BY date
     """
@@ -49,9 +50,10 @@ def get_os_distribution(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         device.operating_system AS os,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
     GROUP BY os
     ORDER BY users DESC
     """
@@ -63,9 +65,10 @@ def get_app_version(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     SELECT
         app_info.version AS version,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
       AND app_info.version IS NOT NULL
     GROUP BY version
     ORDER BY users DESC

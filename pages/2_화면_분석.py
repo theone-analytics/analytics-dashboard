@@ -47,9 +47,10 @@ def get_screen_data(start: str, end: str, category_filter: str, _table: str, _co
             PARSE_DATE('%Y%m%d', event_date) AS date,
             (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'firebase_screen') AS screen_name,
             (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec') AS engagement_time_msec,
-            COALESCE(user_id, user_pseudo_id) AS unique_user
+            user_id AS unique_user
         FROM {_table}
         WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+          AND user_id IS NOT NULL
           AND event_name = 'screen_view'
     ),
     screen_with_category AS (
@@ -82,9 +83,10 @@ def get_screen_daily(start: str, end: str, _table: str, _config: dict):
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
         COUNT(*) AS views,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
       AND event_name = 'screen_view'
     GROUP BY date
     ORDER BY date

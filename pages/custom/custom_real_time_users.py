@@ -36,9 +36,10 @@ def get_hourly_activity(start: str, end: str, _table: str, _config: dict):
     SELECT
         EXTRACT(HOUR FROM TIMESTAMP_MICROS(event_timestamp)) AS hour,
         COUNT(*) AS events,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
     GROUP BY hour
     ORDER BY hour
     """

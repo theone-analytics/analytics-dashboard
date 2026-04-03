@@ -49,9 +49,10 @@ def get_event_data(start: str, end: str, _table: str, _config: dict):
     SELECT
         event_name,
         COUNT(*) AS count,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users
+        COUNT(DISTINCT user_id) AS users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
       AND event_name IN ({CUSTOM_EVENTS_SQL})
     GROUP BY event_name
     ORDER BY count DESC
@@ -67,6 +68,7 @@ def get_event_daily(start: str, end: str, _table: str, _config: dict):
         COUNT(*) AS count
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
       AND event_name IN ({CUSTOM_EVENTS_SQL})
     GROUP BY date
     ORDER BY date

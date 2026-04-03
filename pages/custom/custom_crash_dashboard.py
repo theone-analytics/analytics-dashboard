@@ -36,9 +36,10 @@ def get_crash_data(start: str, end: str, _table: str, _config: dict):
     SELECT
         PARSE_DATE('%Y%m%d', event_date) AS date,
         COUNT(*) AS crash_count,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS affected_users
+        COUNT(DISTINCT user_id) AS affected_users
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
       AND event_name = 'app_exception'
     GROUP BY date
     ORDER BY date

@@ -33,18 +33,20 @@ def get_new_vs_returning_users(start: str, end: str, _table: str, _config: dict)
     sql = f"""
     WITH first_time_users AS (
         SELECT
-            COALESCE(user_id, user_pseudo_id) AS uid,
+            user_id AS uid,
             MIN(event_date) AS first_date
         FROM {_table}
         WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+          AND user_id IS NOT NULL
         GROUP BY uid
     ),
     daily_users AS (
         SELECT
             PARSE_DATE('%Y%m%d', event_date) AS date,
-            COALESCE(user_id, user_pseudo_id) AS uid
+            user_id AS uid
         FROM {_table}
         WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+          AND user_id IS NOT NULL
     )
     SELECT
         u.date,

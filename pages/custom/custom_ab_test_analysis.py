@@ -36,10 +36,11 @@ def get_ab_test_data(start: str, end: str, _table: str, _config: dict):
     SELECT
         (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'experiment_id') AS experiment_id,
         (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'variant_id') AS variant_id,
-        COUNT(DISTINCT COALESCE(user_id, user_pseudo_id)) AS users,
+        COUNT(DISTINCT user_id) AS users,
         COUNT(*) AS events
     FROM {_table}
     WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+      AND user_id IS NOT NULL
       AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'experiment_id') IS NOT NULL
       AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'variant_id') IS NOT NULL
     GROUP BY experiment_id, variant_id

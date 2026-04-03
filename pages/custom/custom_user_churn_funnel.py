@@ -33,11 +33,12 @@ def get_churn_funnel_data(start: str, end: str, _table: str, _config: dict):
     sql = f"""
     WITH user_sessions AS (
         SELECT
-            COALESCE(user_id, user_pseudo_id) AS uid,
+            user_id AS uid,
             COUNTIF(event_name = 'session_start') AS sessions,
             SUM((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec')) / 1000 AS total_engagement_seconds
         FROM {_table}
         WHERE _TABLE_SUFFIX BETWEEN '{start}' AND '{end}'
+          AND user_id IS NOT NULL
         GROUP BY uid
     )
     SELECT
