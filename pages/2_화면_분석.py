@@ -135,7 +135,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("화면별 조회수 TOP 15")
     if not screen_df.empty:
-        top_views = screen_df.nlargest(15, "views")
+        top_views = screen_df[screen_df["screen_name"].notna()].nlargest(15, "views")
         fig = px.bar(
             top_views,
             x="views",
@@ -149,7 +149,7 @@ with col1:
 with col2:
     st.subheader("화면별 체류시간 TOP 15")
     if not screen_df.empty:
-        top_duration = screen_df.nlargest(15, "avg_duration_sec")
+        top_duration = screen_df[screen_df["screen_name"].notna()].nlargest(15, "avg_duration_sec")
         fig = px.bar(
             top_duration,
             x="avg_duration_sec",
