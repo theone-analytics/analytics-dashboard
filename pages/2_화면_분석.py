@@ -130,35 +130,38 @@ if not daily_df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
 # --- TOP 15 차트 ---
-col1, col2 = st.columns(2)
+if not screen_df.empty:
+    filtered_df = screen_df[screen_df["screen_name"].notna()]
 
-with col1:
-    st.subheader("화면별 조회수 TOP 15")
-    if not screen_df.empty:
-        top_views = screen_df[screen_df["screen_name"].notna()].nlargest(15, "views")
-        fig = px.bar(
-            top_views,
-            x="views",
-            y="screen_name",
-            orientation="h",
-            labels={"views": "조회수", "screen_name": "화면"},
-        )
-        fig.update_layout(yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig, use_container_width=True)
+    col1, col2 = st.columns(2)
 
-with col2:
-    st.subheader("화면별 체류시간 TOP 15")
-    if not screen_df.empty:
-        top_duration = screen_df[screen_df["screen_name"].notna()].nlargest(15, "avg_duration_sec")
-        fig = px.bar(
-            top_duration,
-            x="avg_duration_sec",
-            y="screen_name",
-            orientation="h",
-            labels={"avg_duration_sec": "평균 체류시간(초)", "screen_name": "화면"},
-        )
-        fig.update_layout(yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig, use_container_width=True)
+    with col1:
+        st.subheader("화면별 조회수 TOP 15")
+        top_views = filtered_df.nlargest(15, "views")
+        if not top_views.empty:
+            fig = px.bar(
+                top_views,
+                x="views",
+                y="screen_name",
+                orientation="h",
+                labels={"views": "조회수", "screen_name": "화면"},
+            )
+            fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.subheader("화면별 체류시간 TOP 15")
+        top_duration = filtered_df.nlargest(15, "avg_duration_sec")
+        if not top_duration.empty:
+            fig = px.bar(
+                top_duration,
+                x="avg_duration_sec",
+                y="screen_name",
+                orientation="h",
+                labels={"avg_duration_sec": "평균 체류시간(초)", "screen_name": "화면"},
+            )
+            fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
+            st.plotly_chart(fig, use_container_width=True)
 
 # --- 상세 테이블 ---
 st.subheader("화면 상세")
