@@ -35,7 +35,11 @@ def project_env_selector():
     selected_key = project_keys[selected_idx]
     envs = projects[selected_key]["envs"]
 
-    env = st.sidebar.selectbox("환경", list(envs.keys()))
+    env_keys = list(envs.keys())
+    if len(env_keys) == 1:
+        env = env_keys[0]
+    else:
+        env = st.sidebar.selectbox("환경", env_keys)
     return envs[env]
 
 
