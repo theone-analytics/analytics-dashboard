@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from bigquery_client import project_env_selector, query, events_table
 
 st.title("👥 사용자 현황")
+st.caption("v2 - 로그인 사용자 기준")
 
 # --- 환경 선택 ---
 config = project_env_selector()
